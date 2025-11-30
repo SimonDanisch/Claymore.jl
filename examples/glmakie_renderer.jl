@@ -1,26 +1,26 @@
-using Clay
+using Claymore
 using GLMakie
 
 """
-    measure_text_glmakie(text::Clay.ClayString, config::Clay.TextElementConfig, userData)
+    measure_text_glmakie(text::Claymore.ClayString, config::Claymore.TextElementConfig, userData)
 
 Measure text using GLMakie's text extent functionality.
 """
-function measure_text_glmakie(text::Clay.ClayString, config::Clay.TextElementConfig, userData)
+function measure_text_glmakie(text::Claymore.ClayString, config::Claymore.TextElementConfig, userData)
     # Use Makie's text_bb to get accurate text dimensions
     # text_bb returns a HyperRectangle with origin and widths
     bb = Makie.text_bb(text.chars, to_font("default"), Float64(config.fontSize))
     width = Float32(bb.widths[1])
     height = Float32(bb.widths[2])
-    return Clay.Dimensions(width, height)
+    return Claymore.Dimensions(width, height)
 end
 
 """
-    render_clay_to_glmakie(commands::Vector{Clay.RenderCommand}, fig::Figure, ax::Axis)
+    render_clay_to_glmakie(commands::Vector{Claymore.RenderCommand}, fig::Figure, ax::Axis)
 
-Render Clay layout commands to a GLMakie figure.
+Render Claymore layout commands to a GLMakie figure.
 """
-function render_clay_to_glmakie(commands::Vector{Clay.RenderCommand})
+function render_clay_to_glmakie(commands::Vector{Claymore.RenderCommand})
     fig = Figure(size = (1200, 900), backgroundcolor = :white)
     ax = Axis(fig[1, 1], aspect = DataAspect())
 
@@ -35,7 +35,7 @@ function render_clay_to_glmakie(commands::Vector{Clay.RenderCommand})
     for cmd in commands
         bb = cmd.boundingBox
 
-        if cmd.commandType == Clay.RENDER_COMMAND_TYPE_RECTANGLE
+        if cmd.commandType == Claymore.RENDER_COMMAND_TYPE_RECTANGLE
             # Render filled rectangle
             data = cmd.renderData
             color = RGBAf(data.backgroundColor.r, data.backgroundColor.g,
@@ -43,7 +43,7 @@ function render_clay_to_glmakie(commands::Vector{Clay.RenderCommand})
 
             # Create rectangle polygon
             x = bb.x
-            # Flip Y-axis: Clay uses top-left origin, GLMakie uses bottom-left
+            # Flip Y-axis: Claymore uses top-left origin, GLMakie uses bottom-left
             y = screen_height - bb.y - bb.height
             w = bb.width
             h = bb.height
@@ -59,7 +59,7 @@ function render_clay_to_glmakie(commands::Vector{Clay.RenderCommand})
                 # Could be implemented with custom shapes
             end
 
-        elseif cmd.commandType == Clay.RENDER_COMMAND_TYPE_TEXT
+        elseif cmd.commandType == Claymore.RENDER_COMMAND_TYPE_TEXT
             # Render text
             data = cmd.renderData
             color = RGBAf(data.textColor.r, data.textColor.g,
@@ -75,7 +75,7 @@ function render_clay_to_glmakie(commands::Vector{Clay.RenderCommand})
                   color = color,
                   align = (:left, :bottom))
 
-        elseif cmd.commandType == Clay.RENDER_COMMAND_TYPE_BORDER
+        elseif cmd.commandType == Claymore.RENDER_COMMAND_TYPE_BORDER
             # Render border
             data = cmd.renderData
             color = RGBAf(data.color.r, data.color.g, data.color.b, data.color.a)
@@ -110,7 +110,3 @@ function render_clay_to_glmakie(commands::Vector{Clay.RenderCommand})
 
     return fig
 end
-
-println("✓ GLMakie renderer loaded")
-println("  Use: measure_text_glmakie for text measurement")
-println("  Use: render_clay_to_glmakie(commands) to render")
