@@ -550,32 +550,71 @@ function layout_element!(elem::Element, x::Float32, y::Float32, availWidth::Floa
     availWidth = width - cfg.padding.left - cfg.padding.right
     availHeight = height - cfg.padding.top - cfg.padding.bottom
 
-    for child in elem.children
-        # Calculate child position first
-        local cX::Float32 = childX
-        local cY::Float32 = childY
+    # Pre-pass: distribute GROW space among siblings on the main axis
+    # First, measure non-GROW children to determine remaining space for GROW children
+    if cfg.layoutDirection == LEFT_TO_RIGHT
+        grow_count = 0
+        non_grow_width = cfg.childGap * max(0, length(elem.children) - 1)
+        for child in elem.children
+            child_cfg = child.config
+            if !isnothing(child_cfg) && child_cfg.sizing.width.type == SIZING_TYPE_GROW
+                grow_count += 1
+            else
+                # Lay out non-GROW child to measure its width
+                layout_element!(child, childX, childY, availWidth, availHeight)
+                non_grow_width += child.boundingBox.width
+            end
+        end
+        grow_width = grow_count > 0 ? max(0f0, (availWidth - non_grow_width) / grow_count) : 0f0
 
-        layout_element!(child, cX, cY, availWidth, availHeight)
+        # Now lay out all children with correct GROW widths
+        childX = x + cfg.padding.left
+        for child in elem.children
+            local cX::Float32 = childX
+            local cY::Float32 = childY
+            child_cfg = child.config
+            is_grow = !isnothing(child_cfg) && child_cfg.sizing.width.type == SIZING_TYPE_GROW
+            child_avail_w = is_grow ? grow_width : availWidth
+            layout_element!(child, cX, cY, child_avail_w, availHeight)
 
-        # Apply alignment after layout
-        if cfg.layoutDirection == LEFT_TO_RIGHT
             # Vertical alignment for horizontal layout
             if cfg.childAlignment.y == ALIGN_Y_CENTER
                 cY = childY + (availHeight - child.boundingBox.height) / 2
             elseif cfg.childAlignment.y == ALIGN_Y_BOTTOM
                 cY = childY + availHeight - child.boundingBox.height
             end
-            # Update child position
             child.boundingBox = BoundingBox(cX, cY, child.boundingBox.width, child.boundingBox.height)
             childX += child.boundingBox.width + cfg.childGap
-        else
+        end
+    else
+        grow_count = 0
+        non_grow_height = cfg.childGap * max(0, length(elem.children) - 1)
+        for child in elem.children
+            child_cfg = child.config
+            if !isnothing(child_cfg) && child_cfg.sizing.height.type == SIZING_TYPE_GROW
+                grow_count += 1
+            else
+                layout_element!(child, childX, childY, availWidth, availHeight)
+                non_grow_height += child.boundingBox.height
+            end
+        end
+        grow_height = grow_count > 0 ? max(0f0, (availHeight - non_grow_height) / grow_count) : 0f0
+
+        childY = y + cfg.padding.top
+        for child in elem.children
+            local cX::Float32 = childX
+            local cY::Float32 = childY
+            child_cfg = child.config
+            is_grow = !isnothing(child_cfg) && child_cfg.sizing.height.type == SIZING_TYPE_GROW
+            child_avail_h = is_grow ? grow_height : availHeight
+            layout_element!(child, cX, cY, availWidth, child_avail_h)
+
             # Horizontal alignment for vertical layout
             if cfg.childAlignment.x == ALIGN_X_CENTER
                 cX = childX + (availWidth - child.boundingBox.width) / 2
             elseif cfg.childAlignment.x == ALIGN_X_RIGHT
                 cX = childX + availWidth - child.boundingBox.width
             end
-            # Update child position
             child.boundingBox = BoundingBox(cX, cY, child.boundingBox.width, child.boundingBox.height)
             childY += child.boundingBox.height + cfg.childGap
         end
